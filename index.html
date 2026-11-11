@@ -467,7 +467,7 @@ function recompute() {
   cats = C.filter((c) => partners.some((p) => p.category === c.id));
 }
 const catName = (id) => allCats().find((c) => c.id === id)?.name || '';
-const logoSrc = (p) => p.logoAsset ? '/_blob/' + p.logoAsset : (LOGOS[p.id] || '');
+const logoSrc = (p) => p.logoUrl || (p.logoAsset ? '/_blob/' + p.logoAsset : (LOGOS[p.id] || ''));
 recompute();
 
 // مروحة الواجهة: أعلى خمس نسب، وأكبرها في الوسط — كغلاف الدليل
@@ -565,7 +565,9 @@ document.getElementById('foot').innerHTML = `
   ${c.phone ? `<div class="ask"><div class="l">رقم التواصل الرسمي</div><div class="row"><b>${esc(c.phone)}</b><button class="copy" type="button" data-copy="${esc(c.phone)}">نسخ الرقم</button></div></div>` : ''}
   <div class="ct"><span>info@AlRyahin.org.sa</span><a href="https://www.alryahin.org.sa" target="_blank" rel="noopener">www.AlRyahin.org.sa</a><span>AlRyahinKSA · الرياض - السويدي الغربي</span></div>`;
 
-let isAdmin = false, DB = null, ASSETS = null;
+let isAdmin = false, DB = null, ASSETS = null, STORE = null, PIN_ENTERED = '';
+// مسار الشراكات العامّ في منظومة PMO — يُحقن عند بناء نسخة GitHub؛ فارغٌ في نسخة claude.ai
+const SHEET_API = 'https://pmoserver-production.up.railway.app/api/public/partners';
 function refresh() { recompute(); drawFan(); drawCats(); drawSupport(); render(); }
 refresh();
 
@@ -573,7 +575,11 @@ const toast = (t) => { const el = document.getElementById('toast'); el.textConte
 
 // قاعدة البيانات: ما يضيفه المسؤول يظهر عند الجميع فورًا. إن لم تتوفّر بقيت الصفحة على بيانات الملف
 (async () => {
-  if (!window.claude?.use) return;
+  if (!window.claude?.use) {
+    // صفحة GitHub ثابتة: الشراكات المضافة تُقرأ من منظومة PMO، ويضيفها مسؤول الشراكات من حسابه هناك
+    if (SHEET_API) await loadSheet();
+    return;
+  }
   DB = await claude.use('db');
   if (DB) {
     DB.collection('partners').onSnapshot((snap) => {
@@ -585,12 +591,29 @@ const toast = (t) => { const el = document.getElementById('toast'); el.textConte
   // والكتابة نفسها لمن يملكها في الرابط (منسوبو الجمعية الداخلون بحسابهم) — الزائر من خارجها يقرأ فقط
   if (DB) {
     ASSETS = await claude.use('assets');
+    STORE = {
+      save: async (id, doc, file) => {
+        if (file) {
+          if (!ASSETS) throw { message: 'رفع الشعار غير متاح في هذا الحساب. احفظ بلا شعار، أو ادخل بحساب الجمعية.' };
+          doc.logoAsset = (await ASSETS.upload(file)).id;
+        }
+        await STORE.save(id, doc, file);
+      },
+      del: (id) => DB.collection('partners').doc(id).delete(),
+    };
     document.getElementById('fab').hidden = false;
-    try { if (sessionStorage.getItem('rh-admin') === PIN_HASH) { isAdmin = true; refresh(); } } catch (_) {}
+    try { if (sessionStorage.getItem('rh-admin') === PIN_HASH) { isAdmin = true; PIN_ENTERED = sessionStorage.getItem('rh-pin') || ''; refresh(); } } catch (_) {}
   }
 })();
 
 const PIN_HASH = 'd11e44e473e11bb9496febf13fe935fee12c84904a667ef4f379a2a1ed1446f0';
+async function loadSheet() {
+  try {
+    const res = await fetch(SHEET_API + (SHEET_API.includes('?') ? '&' : '?') + 't=' + Date.now()).then((r) => r.json());
+    EXTRA = (res.partners || []).filter((p) => p.name && p.benefit);
+    refresh();
+  } catch (_) {}
+}
 async function sha256(t) {
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -608,8 +631,8 @@ function openPin() {
     ev.preventDefault();
     const v = document.getElementById('f-pin').value.trim();
     if (await sha256(v) !== PIN_HASH) { document.getElementById('pin-err').textContent = 'الرقم السري غير صحيح. أعد المحاولة.'; return; }
-    isAdmin = true;
-    try { sessionStorage.setItem('rh-admin', PIN_HASH); } catch (_) {}
+    isAdmin = true; PIN_ENTERED = v;
+    try { sessionStorage.setItem('rh-admin', PIN_HASH); sessionStorage.setItem('rh-pin', v); } catch (_) {}
     refresh(); openForm(null);
   });
 }
@@ -684,16 +707,11 @@ function openForm(p) {
     if (branchList.some((x) => !x.url)) return err('كل سطر في الفروع يحتاج رابطًا يبدأ بـ https://');
     const save = $('f-save'); save.disabled = true; save.textContent = 'جارٍ الحفظ…'; err('');
     try {
-      let logoAsset = e.logoAsset || '';
       const file = $('f-logo').files[0];
-      if (file) {
-        if (!ASSETS) throw { message: 'رفع الشعار غير متاح في هذا الحساب. احفظ بلا شعار، أو ادخل بحساب الجمعية.' };
-        logoAsset = (await ASSETS.upload(file)).id;
-      }
       const wa = $('f-wa').value.replace(/\D/g, '');
       const doc = {
         name, category, ...(categoryName ? { categoryName } : (e.categoryName && category === e.category ? { categoryName: e.categoryName } : {})),
-        logoAsset,
+        ...(e.logoAsset ? { logoAsset: e.logoAsset } : {}), ...(e.logoUrl ? { logoUrl: e.logoUrl } : {}),
         benefit: kind === 'text' ? { kind: 'text', value: val, short: val, scope: $('f-scope').value.trim() }
           : { kind: 'percent', value: val.replace('%', ''), upTo: kind === 'upto', scope: $('f-scope').value.trim() },
         method, methodText: method === 'code' ? 'استخدم كود الخصم' : method === 'card' ? 'إبراز عضوية الرياحين' : '', code: method === 'code' ? code : '',
@@ -710,6 +728,8 @@ function openForm(p) {
       const c = x?.code;
       err(c === 'too_large' ? 'الشعار أكبر من المسموح. صغّره ثم أعد المحاولة.'
         : c === 'unsupported_type' ? 'صيغة الشعار غير مدعومة. استعمل PNG أو JPG.'
+        : c === 'pin' ? 'الرقم السري غير صحيح. أغلق الخانة وأعد الدخول بالرقم الصحيح.'
+        : c === 'sheet' ? 'تعذّر الحفظ في الجدول. تحقّق من الاتصال ثم أعد المحاولة.'
         : c === 'invalid_argument' || c === 'not_granted' ? 'الحفظ متاح لمنسوبي الجمعية الداخلين بحسابهم في Claude. ادخل بحساب الجمعية ثم أعد المحاولة.'
         : x?.message && !c ? x.message : 'تعذّر الحفظ الآن. تحقّق من الاتصال ثم أعد المحاولة.');
     }
@@ -725,7 +745,7 @@ document.addEventListener('click', async (e) => {
   const dl = e.target.closest('[data-del]');
   if (!dl) return;
   if (!dl.classList.contains('sure')) { dl.classList.add('sure'); dl.textContent = 'اضغط مرة ثانية للحذف'; setTimeout(() => { dl.classList.remove('sure'); dl.textContent = 'حذف'; }, 3500); return; }
-  try { await DB.collection('partners').doc(dl.dataset.del).delete(); toast('حُذفت الشراكة'); }
+  try { await STORE.del(dl.dataset.del); toast('حُذفت الشراكة'); }
   catch (_) { toast('تعذّر الحذف. أعد المحاولة.'); }
 });
 </script>
