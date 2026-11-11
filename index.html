@@ -92,6 +92,29 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .cats button { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 14px 8px; font-size: .92rem; cursor: pointer; white-space: nowrap; }
 .cats button[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; font-weight: 700; }
 
+/* ===== شريط «شراكة جديدة» — كخبرٍ عاجل فوق الدليل ===== */
+.news { margin-top: 14px; position: relative; display: flex; align-items: center; gap: 12px; width: 100%; text-align: start; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 10px 12px 10px 14px; box-shadow: var(--shadow); overflow: hidden; color: var(--ink); }
+.news::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: linear-gradient(180deg, var(--green), var(--teal)); }
+.news .badge { flex: none; display: inline-flex; align-items: center; gap: 6px; background: var(--green); color: #073B2A; font-weight: 700; font-size: .8rem; border-radius: 999px; padding: 3px 11px 5px; }
+.news .dot { width: 8px; height: 8px; border-radius: 50%; background: #073B2A; }
+.news .lgb { width: 52px; height: 40px; flex: none; background: #fff; border: 1px solid var(--line); border-radius: 10px; display: grid; place-items: center; padding: 4px; }
+.news .lgb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.news .msg { flex: 1; min-width: 0; line-height: 1.4; }
+.news .msg small { display: block; color: var(--muted); font-size: .78rem; }
+.news .msg b { display: block; color: var(--title); font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.news .msg b span { color: var(--teal); }
+.news .dots { display: flex; gap: 4px; flex: none; }
+.news .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.news .dots i.on { background: var(--teal); width: 16px; border-radius: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .news .dot { animation: pulse 1.6s ease-out infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(7 59 42 / .5); } 100% { box-shadow: 0 0 0 7px rgb(7 59 42 / 0); } }
+  .news .slide { animation: slidein .45s cubic-bezier(.22, 1, .36, 1); }
+  @keyframes slidein { from { opacity: 0; transform: translateY(8px); } }
+}
+.news .slide { display: contents; }
+
 /* ===== الشريك الداعم ===== */
 .support { margin-top: 14px; display: flex; align-items: center; gap: 14px; background: linear-gradient(120deg, var(--green-soft), var(--surface)); border: 2px solid var(--green); border-radius: 22px; padding: 12px 16px; text-decoration: none; }
 .support img { width: 64px; height: 64px; object-fit: contain; background: #fff; border-radius: 50%; padding: 4px; flex: none; }
@@ -212,6 +235,7 @@ details[open].cp .chev { transform: rotate(180deg); }
 </header>
 
 <div class="in">
+  <div id="news"></div>
   <div class="bar">
     <label class="search" for="q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="q" type="search" placeholder="ابحث عن شريك…" autocomplete="off"></label>
@@ -238,6 +262,7 @@ details[open].cp .chev { transform: rotate(180deg); }
 // url:          رابط موقع الشريك في خرائط Google — يصير رمز QR قابلًا للمسح وللضغط معًا
 // branchSearch: ما يُبحث به في خرائط Google لزر «اعرف أقرب فرع» — يُترك فارغًا لمن لا فروع له
 // branchList:   فروع الشريك [{name, note, url}] — تُعرض شبكةً يضغط المستفيد منها الفرع الأقرب إليه
+// addedAt:      تاريخ الانضمام — من انضمّ خلال ٣٠ يومًا يظهر في شريط «شراكة جديدة» بالدليل الإلكتروني
 // period/terms: لا يظهران إلا إن وُجدت مدةٌ أو شروطٌ فعلية من الشريك
 // benefit:      { kind: 'percent', value, scope, upTo } — upTo: «خصم حتى» حين يقول الشريك «يصل إلى»
 //               { kind: 'multi', items: [{ value, on }] } — أكثر من نسبة في عرضٍ واحد
@@ -326,7 +351,7 @@ window.GUIDE = {
     },
     {
       // شريكٌ داعم لا خصم: يقدّم دعمًا مجانيًا للجمعية (بلاغ المستخدم 2026-11-04)
-      id: 'laroche', category: 'sweets',
+      id: 'laroche', addedAt: '2026-11-04', category: 'sweets',
       name: 'لاروش La Roche', logo: 'logos/laroche.png',
       benefit: { kind: 'text', value: 'دعم مجاني', short: 'دعم مجاني', for: 'شريكٌ داعم لجمعية الرياحين' },
       beneficiaries: '',
@@ -344,7 +369,7 @@ window.GUIDE = {
       url: 'https://maps.app.goo.gl/3Q7K1j8MvyK21fAz6', branchSearch: 'Yes Padel',
     },
     {
-      id: 'address', category: 'sport',
+      id: 'address', addedAt: '2026-10-21', category: 'sport',
       name: 'ADDRESS Padel & Padbol', logo: 'logos/address.png',
       benefit: { kind: 'percent', value: '30', scope: '' },
       beneficiaries: '',
@@ -373,7 +398,7 @@ window.GUIDE = {
       url: '', branchSearch: 'مغاسل الشفق',
     },
     {
-      id: 'jazeel', category: 'shop',
+      id: 'jazeel', addedAt: '2026-10-21', category: 'shop',
       name: 'جزيل', logo: 'logos/jazeel.png',
       benefit: { kind: 'percent', value: '15', scope: '' },
       beneficiaries: '',
@@ -393,7 +418,7 @@ window.GUIDE = {
     },
     {
       // من إعلان الشراكة (designs/alsunaidi، 2026-10-29) — الفروع مقروءة من روابطها في الخرائط
-      id: 'alsunaidi', category: 'shop',
+      id: 'alsunaidi', addedAt: '2026-11-11', category: 'shop',
       name: 'السنيدي', logo: 'logos/alsunaidi.png',
       benefit: { kind: 'percent', value: '10', scope: 'لوازم الرحلات والتخييم والهايكنج' },
       beneficiaries: '',
@@ -568,7 +593,41 @@ document.getElementById('foot').innerHTML = `
 let isAdmin = false, DB = null, ASSETS = null, STORE = null, PIN_ENTERED = '';
 // مسار الشراكات العامّ في منظومة PMO — يُحقن عند بناء نسخة GitHub؛ فارغٌ في نسخة claude.ai
 const SHEET_API = 'https://pmoserver-production.up.railway.app/api/public/partners';
-function refresh() { recompute(); drawFan(); drawCats(); drawSupport(); render(); }
+// شريط «شراكة جديدة»: من انضمّ خلال ٣٠ يومًا، الأحدث أولًا، يتبدّلون كل أربع ثوانٍ
+const NEW_DAYS = 30;
+let newsIdx = 0, newsTimer = null;
+function drawNews() {
+  const now = Date.now();
+  const fresh = partners.filter((p) => p.addedAt && now - new Date(p.addedAt).getTime() < NEW_DAYS * 864e5)
+    .sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
+  const host = document.getElementById('news');
+  clearInterval(newsTimer);
+  if (!fresh.length) { host.innerHTML = ''; return; }
+  newsIdx = newsIdx % fresh.length;
+  const show = () => {
+    const p = fresh[newsIdx];
+    const b = p.benefit || {};
+    const offer = b.kind === 'text' ? esc(b.value) : (b.kind === 'multi' || b.upTo ? 'خصم حتى ' : 'خصم ') + '<bdi dir="ltr">' + maxOf(b) + '%</bdi>';
+    const days = Math.floor((now - new Date(p.addedAt).getTime()) / 864e5);
+    const when = days <= 0 ? 'اليوم' : days === 1 ? 'أمس' : days === 2 ? 'قبل يومين' : days <= 10 ? 'قبل ' + days + ' أيام' : 'قبل ' + days + ' يومًا';
+    host.innerHTML = `<button class="news" type="button" data-open="${esc(p.id)}" aria-label="شراكة جديدة: ${esc(p.name)}">
+      <span class="badge"><span class="dot"></span>شراكة جديدة</span>
+      <span class="slide"><span class="lgb"><img src="${logoSrc(p)}" alt=""></span>
+      <span class="msg"><small>انضم ${when} · ${esc(catName(p.category))}</small><b><bdi>${esc(p.name)}</bdi> · <span>${offer}</span></b></span></span>
+      ${fresh.length > 1 ? `<span class="dots" aria-hidden="true">${fresh.map((_, k) => `<i class="${k === newsIdx ? 'on' : ''}"></i>`).join('')}</span>` : ''}
+    </button>`;
+  };
+  show();
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (fresh.length > 1 && !still) newsTimer = setInterval(() => { newsIdx = (newsIdx + 1) % fresh.length; show(); }, 4000);
+}
+document.getElementById('news').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-open]'); if (!b) return;
+  current = 'all'; query = ''; document.getElementById('q').value = ''; render();
+  const d = document.getElementById('p-' + b.dataset.open);
+  if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+});
+function refresh() { recompute(); drawFan(); drawCats(); drawSupport(); drawNews(); render(); }
 refresh();
 
 const toast = (t) => { const el = document.getElementById('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => { el.hidden = true; }, 2200); };
